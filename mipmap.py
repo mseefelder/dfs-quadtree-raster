@@ -116,9 +116,10 @@ class Mipmap():
                 stack.append((ly*leveldimensions[l][0]+lx,l))
             
             print((x,y))
+            #This order matters for ptInSq and ptInTri
             sq1 = (lts*x,     lts*y)
-            sq2 = (lts*x,     lts*y+lts)
-            sq3 = (lts*x+lts, lts*y+lts)
+            sq2 = (lts*x+lts, lts*y+lts)
+            sq3 = (lts*x,     lts*y+lts)
             sq4 = (lts*x+lts, lts*y)
             print(sq1, sq2, sq3, sq4)
             count = 0
@@ -126,7 +127,7 @@ class Mipmap():
             count = count + int(ptInTri(sq2,p1,p2,p3))
             count = count + int(ptInTri(sq3,p1,p2,p3))
             count = count + int(ptInTri(sq4,p1,p2,p3))
-            print(count)
+            print("Sq points in tri:", count)
             if count == 4:
                 selected.append((x,y,l))
                 continue
@@ -139,7 +140,7 @@ class Mipmap():
                 count = count + int(ptInSq(p1,sq1,sq2,sq3,sq4))
                 count = count + int(ptInSq(p2,sq1,sq2,sq3,sq4))
                 count = count + int(ptInSq(p3,sq1,sq2,sq3,sq4))
-                print(count)
+                print("Tri points in sq:", count)
                 if count > 0:
                     if l>0:
                         stack.append((((2*y)*leveldimensions[l-1][0])+(x*2),l-1))
