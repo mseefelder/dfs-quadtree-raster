@@ -20,6 +20,12 @@ def ptInTri(p, p0, p1, p2):
 def ptInSq(p, p0, p1, p2, p3):
     return ptInTri(p, p0, p1, p2) or ptInTri(p, p0, p2, p3)
 
+def vecLen(vec):
+    result = 0
+    for i in vec:
+        result += i**2
+    return sqrt(result)
+
 class Mipmap():
     
     def __init__(self, tilesize, w, h):
@@ -78,11 +84,32 @@ class Mipmap():
                     vertex (lts*ax,    lts*ay+lts)
                     vertex (lts*ax+lts, lts*ay+lts)
                     vertex (lts*ax+lts, lts*ay)
-                
-    def trace(self, p1, p2, p3, l=2):
+        
+    def shade():
+        shArr = (0,0,0,0,0,0,0,0)
+        
+        
+        
+        return shArr            
+                            
+    #def trace(self, p1, p2, p3, l=2):
+    def trace(self, origin, uvec, angle, distance, l=2):
+        
+        p1 = origin
+        p2 = (cos(angle)*uvec[0]-sin(angle)*uvec[1], sin(angle)*uvec[0]+cos(angle)*uvec[1]) 
+        dp = vecLen(p2)
+        p2 = ((p2[0]/dp)*distance, (p2[1]/dp)*distance)
+        p2 = (p2[0]+p1[0], p2[1]+p1[1])
+        
+        p3 = (cos(angle)*uvec[0]+sin(angle)*uvec[1], -sin(angle)*uvec[0]+cos(angle)*uvec[1])
+        p3 = ((p3[0]/dp)*distance, (p3[1]/dp)*distance)
+        p3 = (p3[0]+p1[0], p3[1]+p1[1])
+        
+        print(p1, p2, p3)
+        
         levelsizes = [(self.size[0]*self.size[1])/(4**i) for i in range(l+1)]
         leveldimensions = [((self.size[0])/(2**i), (self.size[1])/(2**i)) for i in range(l+1)]
-        print(leveldimensions)
+        #print(leveldimensions)
         
         stack = []
         for i in xrange(leveldimensions[l][0]):
@@ -98,9 +125,9 @@ class Mipmap():
         y = 0
         l = 0
         while stack!=[]:
-            print("==========")
-            print "stack:", stack
-            print "selected:", selected
+            #print("==========")
+            #print "stack:", stack
+            #print "selected:", selected
             
             t = stack.pop()
             l = t[1]
@@ -115,19 +142,19 @@ class Mipmap():
                 ly = y + t[0]%2
                 stack.append((ly*leveldimensions[l][0]+lx,l))
             
-            print((x,y))
+            #print((x,y))
             #This order matters for ptInSq and ptInTri
             sq1 = (lts*x,     lts*y)
             sq2 = (lts*x+lts, lts*y+lts)
             sq3 = (lts*x,     lts*y+lts)
             sq4 = (lts*x+lts, lts*y)
-            print(sq1, sq2, sq3, sq4)
+            #print(sq1, sq2, sq3, sq4)
             count = 0
             count = count + int(ptInTri(sq1,p1,p2,p3))
             count = count + int(ptInTri(sq2,p1,p2,p3))
             count = count + int(ptInTri(sq3,p1,p2,p3))
             count = count + int(ptInTri(sq4,p1,p2,p3))
-            print("Sq points in tri:", count)
+            #print("Sq points in tri:", count)
             if count == 4:
                 selected.append((x,y,l))
                 continue
@@ -140,7 +167,7 @@ class Mipmap():
                 count = count + int(ptInSq(p1,sq1,sq2,sq3,sq4))
                 count = count + int(ptInSq(p2,sq1,sq2,sq3,sq4))
                 count = count + int(ptInSq(p3,sq1,sq2,sq3,sq4))
-                print("Tri points in sq:", count)
+                #print("Tri points in sq:", count)
                 if count > 0:
                     if l>0:
                         stack.append((((2*y)*leveldimensions[l-1][0])+(x*2),l-1))
