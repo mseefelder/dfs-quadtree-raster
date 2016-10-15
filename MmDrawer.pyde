@@ -5,10 +5,10 @@ p1 = (2,2)
 p2 = (100,240)
 p3 = (240,2)
 
-origin = (128,256)
-uvec = (0,-1)
+origin = (128.0,256.0)
+uvec = (0.0,-1.0)
 angle = 0.50
-distance = 200
+distance = 200.0
 
 def setup():
     size(256, 256)

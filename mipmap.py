@@ -26,6 +26,12 @@ def vecLen(vec):
         result += i**2
     return sqrt(result)
 
+def vecLen2(vec):
+    result = 0
+    for i in vec:
+        result += i**2
+    return result
+
 def rotVec(v, a):
     c = cos(a)
     s = sin(a)
@@ -36,17 +42,21 @@ def angleDir(u, v):
     return atan2(v[1], v[0]) - atan2(u[1], u[0])
 
 def dist2(u, v):
-    return (u[0]-v[0])*(u[0]-v[0])+(u[1]-v[1])*(u[1]-v[1])
+    return 1.0*(u[0]-v[0])*(u[0]-v[0])+1.0*(u[1]-v[1])*(u[1]-v[1])
 
 def shadeCalc(o, p, r, a, ul, ur, bigAngle):
-    l = dist2(o, p)
-    theta = acos( 1-( (r*r)/(2*l) ) )
-    pl = rotVec(p, theta)
-    pr = rotVec(p, -theta)
-    print(p, pr, pl, r, theta)
-    l = sqrt(l)
-    opl = ((pl[0]-o[0])/l, (pl[1]-o[1])/l)
-    opr = ((pr[0]-o[0])/l, (pr[1]-o[1])/l)
+    op = (p[0]-o[0], p[1]-o[1])
+    l2 = vecLen2(op)
+    l = sqrt(l2)
+    op = (op[0]/l, op[1]/l)
+    #theta = acos( 1 - ( (r*r)/(2*l*1.0) ) )
+    theta = acos( sqrt( (l2-(r*r))/l2 ) )
+    opl = rotVec(op, theta)
+    opr = rotVec(op, -theta)
+    print(o, p, op, opr, opl, r, theta, l)
+    #l = sqrt(l)
+    #opl = ((pl[0]-o[0])/l, (pl[1]-o[1])/l)
+    #opr = ((pr[0]-o[0])/l, (pr[1]-o[1])/l)
     offset = angleDir(ur,opr)
     shade = angleDir(ur,opl)
     return offset, shade
@@ -55,8 +65,8 @@ def percentIn(o, s, b):
     print (o, s, b)
     so = s-o
     r = 0
-    if so > 0:
-        r = r + (o  < 0 and s  > 1)*(b/so) + (o  < 0 and s <= 1)*(s/so) + (o >= 0 and s  > 1)*((b-o)/so)
+    #if so > 0:
+    r = r + (o  < 0 and s  > 1)*(b/so) + (o  < 0 and s <= 1)*(s/so) + (o >= 0 and s  > 1)*((b-o)/so)
     print (r + (r<=0)*1)
     return r + (r<=0)*1
 
