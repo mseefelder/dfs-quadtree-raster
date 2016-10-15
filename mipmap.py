@@ -73,19 +73,22 @@ def shadeCalc(o, p, r, a, ul, ur, bigAngle):
 #    return r + (r<=0)*1
 
 def nodeIn(o, s, b):
-    print (o, s, b)
+    #print (o, s, b)
     return (o >= 0) and (o < b) and (s <= b) and (s > 0)
 
 class Mipmap():
     
-    def __init__(self, tilesize, w, h):
+    def __init__(self, tilesize, w, h, levels):
         self.ts = tilesize
         self.s = (w/tilesize, h/tilesize)
         self.selected = []
-        self.origin = (self.s[0]/2, self.s[1]/2)
-        self.ur = (1,0)
-        self.ul = (-1,0)
-        self.distance = 1
+        self.base = levels[0]
+        self.light = (self.s[0]/2, self.s[1]/2)
+        self.lightDiameter = self.s[0]/8
+        self.lightChanged = True
+        self.frame = createImage(self.s[0], self.s[1], RGB)
+        self.maps = levels
+        self.maxLevel = len(self.maps)
                 
     def displayEllipses(self):       
         ts = self.ts
@@ -108,10 +111,48 @@ class Mipmap():
         #    stroke('#00FF00')
         #    line(self.origin[0], self.origin[1], self.distance*self.ur[0]*ts, self.distance*self.ur[1]*ts)
         #    line(self.origin[0], self.origin[1], self.distance*self.ul[0]*ts, self.distance*self.ul[1]*ts)
-                
-
+     
+    def setlight(self, x, y):
+        self.light = (x, y)
+        self.lightChanged = True
+        return 0          
+    
+    def render(self):
+        ts = self.ts
+        base = self.base
+        lgt = self.light
+        lgtdiam = self.lightDiameter
+        frame = self.frame
+        
+        if (self.lightChanged):
+            #render ground
+            for x in range(self.s[0]):
+                for y in range(self.s[1]):
+                    c = color(255.0-red(base.get(x, y)), 120.0, 120.0)
+                    frame.set(x, y, c)
+        
+            #calculate shadows for ground not in obstacles
+            for x in range(self.s[0]):
+                for y in range(self.s[1]):
+                    if (red(base.get(x, y)) != 0) and (dist2((x,y), lgt) > 1e-12):
+                        self.updateShadow(x, y)
+            
+            #set as updated
+            self.lightChanged = False
+        
+        image(frame, 0, 0)
+        
+        #render light
+        with pushStyle():
+            noStroke()
+            fill('#FDFDFD')
+            ellipse(lgt[0], lgt[1], lgtdiam, lgtdiam)
+            
+    
     def display(self):       
         ts = self.ts
+        base = self.base
+
         with beginShape(QUADS):
             for x in range(self.s[0]):
                 for y in range(self.s[1]):
@@ -139,7 +180,36 @@ class Mipmap():
        #     line(self.origin[0], self.origin[1], self.distance*self.ur[0]*ts, self.distance*self.ur[1]*ts)
        #     line(self.origin[0], self.origin[1], self.distance*self.ul[0]*ts, self.distance*self.ul[1]*ts)
                 
-                            
+   
+    def updateShadow(self, x, y):
+        lgt = self.light
+        lrad = self.lightDiameter/2.0
+        
+        #point of calculation
+        origin = (x*1.0,y*1.0)
+        
+        #compute vector to light
+        u = (lgt[0]-x, lgt[1]-y)
+        
+        #compute opening angle
+        ul2 = vecLen2(u)
+        theta = 2*acos( sqrt( (ul2-(lrad*lrad))/ul2 ) )
+        
+        #compute calculation distance
+        ul = sqrt(ul2)
+        
+        c = self.calcShadow(origin, u, theta, ul, self.maxLevel)
+        
+        self.frame.set(x, y, color(255.0*c))
+        
+        return 0
+   
+    def calcShadow(self, origin, u, angle, distance, l=2):
+        
+        s = 0.0
+        
+        return s
+                                                                              
     #def trace(self, p1, p2, p3, l=2):
     def trace(self, origin, u, angle, distance, l=2):
         
@@ -177,8 +247,6 @@ class Mipmap():
 
         levelradiuses = [(2**(i))/2.0 for i in range(l+1)]
         
-        print(leveldimensions)
-        
         #starting nodes
         stack = []
         for i in xrange(leveldimensions[l][0]):
@@ -193,7 +261,7 @@ class Mipmap():
         y = 0
         l = 0
         while stack!=[]: 
-            print(stack)           
+            #print(stack)           
             t = stack.pop()
             l = t[2]
             lns = (2**l) #level node size
@@ -219,11 +287,10 @@ class Mipmap():
             # percent = percentIn(offset, shade, bigAngle) 
                     
             if nodeIn(offset, shade, bigAngle):#percent > 0.8:
-                print("Is in!")
                 selected.append((x,y,l))
             elif l>0:
                 stack.append((2*x, 2*y, l-1))#((((2*y)*leveldimensions[l-1][0])+(x*2),l-1))
 
         self.selected = selected
-        print(selected)
+        #print(selected)
         return selected
