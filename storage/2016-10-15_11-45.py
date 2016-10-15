@@ -61,60 +61,60 @@ def shadeCalc(o, p, r, a, ul, ur, bigAngle):
     shade = angleDir(ur,opl)
     return offset, shade
 
-#def percentIn(o, s, b):
-#    print (o, s, b)
-#    if (s<0 and o<0) or (s>b and o>b):
-#        return 0
-#    so = s-o
-#    r = 0
-#    #if so > 0:
-#    r = r + (o  < 0 and s  > 1)*(b/so) + (o  < 0 and s <= 1)*(s/so) + (o >= 0 and s  > 1)*((b-o)/so)
-#    print (r + (r<=0)*1)
-#    return r + (r<=0)*1
-
-def nodeIn(o, s, b):
-    print (o, s, b)
-    return (o >= 0) and (o < b) and (s <= b) and (s > 0)
+def percentIn(o, s, b):
+    #print (o, s, b)
+    so = s-o
+    r = 0
+    #if so > 0:
+    r = r + (o  < 0 and s  > 1)*(b/so) + (o  < 0 and s <= 1)*(s/so) + (o >= 0 and s  > 1)*((b-o)/so)
+    #print (r + (r<=0)*1)
+    return r + (r<=0)*1
 
 class Mipmap():
     
     def __init__(self, tilesize, w, h):
-        self.ts = tilesize
-        self.s = (w/tilesize, h/tilesize)
+        self.tilesize = tilesize
+        self.size = (w/tilesize, h/tilesize)
+        #self.tile()
         self.selected = []
-        self.origin = (self.s[0]/2, self.s[1]/2)
+        self.origin = (w/2, h/2)
         self.ur = (1,0)
         self.ul = (-1,0)
         self.distance = 1
-                
-    def displayEllipses(self):       
-        ts = self.ts
-        hts = 0.5*ts
-        #for x in range(self.s[0]):
-        #    for y in range(self.s[1]):
-        #        ellipse(ts*x+hts, ts*y+hts, ts, ts)
-        
-        with pushStyle():
-            stroke('#FF0000')
-            for i in self.selected:
-                ax = i[0]
-                ay = i[1]
-                al = i[2]
-                lts = ts*(2**(al))
-                hlts = 0.5*lts
-                ellipse(lts*ax, lts*ay, lts, lts)
-                
-        #with pushStyle():
-        #    stroke('#00FF00')
-        #    line(self.origin[0], self.origin[1], self.distance*self.ur[0]*ts, self.distance*self.ur[1]*ts)
-        #    line(self.origin[0], self.origin[1], self.distance*self.ul[0]*ts, self.distance*self.ul[1]*ts)
-                
-
-    def display(self):       
-        ts = self.ts
+            
+    def tile(self):
+        #Divide window into tiles of size tS (= tile size)
+        #Returns (width, height) in tiles
+        ts = self.tilesize
         with beginShape(QUADS):
-            for x in range(self.s[0]):
-                for y in range(self.s[1]):
+            for x in range(self.size[0]):
+                for y in range(self.size[1]):
+                    vertex (ts*x,    ts*y)
+                    vertex (ts*x,    ts*y+ts)
+                    vertex (ts*x+ts, ts*y+ts)
+                    vertex (ts*x+ts, ts*y)
+       
+    # def drawtile(self,x,y,l=0,c='#FF0000'):
+    #     #Draws tile on x,y in level l
+    #     #Stes color c
+    #     print("Drawing")
+    #     ts = self.tilesize*(2**(l+1))
+    #     with pushStyle():
+    #         stroke(c)
+    #         with beginShape(QUADS):
+    #             vertex (ts*x,    ts*y)
+    #             vertex (ts*x,    ts*y+ts)
+    #             vertex (ts*x+ts, ts*y+ts)
+    #             vertex (ts*x+ts, t    
+    # def drawtileTuple(self,tile):
+    #     print(tile)
+    #     self.drawtile(tile[0], tile[1], tile[2])
+                
+    def display(self):       
+        ts = self.tilesize
+        with beginShape(QUADS):
+            for x in range(self.size[0]):
+                for y in range(self.size[1]):
                     vertex (ts*x,    ts*y)
                     vertex (ts*x,    ts*y+ts)
                     vertex (ts*x+ts, ts*y+ts)
@@ -124,20 +124,19 @@ class Mipmap():
             ax = i[0]
             ay = i[1]
             al = i[2]
-            lts = ts*(2**(al))
+            lts = self.tilesize*(2**(al))
             with pushStyle():
                 stroke('#FF0000')
-                fill('#F2F3F4')
                 with beginShape(QUADS):
                     vertex (lts*ax,    lts*ay)
                     vertex (lts*ax,    lts*ay+lts)
                     vertex (lts*ax+lts, lts*ay+lts)
                     vertex (lts*ax+lts, lts*ay)      
         
-       # with pushStyle():
-       #     stroke('#00FF00')
-       #     line(self.origin[0], self.origin[1], self.distance*self.ur[0]*ts, self.distance*self.ur[1]*ts)
-       #     line(self.origin[0], self.origin[1], self.distance*self.ul[0]*ts, self.distance*self.ul[1]*ts)
+        with pushStyle():
+            stroke('#00FF00')
+            line(self.origin[0], self.origin[1], self.distance*self.ur[0]*ts, self.distance*self.ur[1]*ts)
+            line(self.origin[0], self.origin[1], self.distance*self.ul[0]*ts, self.distance*self.ul[1]*ts)
                 
                             
     #def trace(self, p1, p2, p3, l=2):
@@ -160,70 +159,56 @@ class Mipmap():
         ul = rotVec(u, angle)
         ur = rotVec(u, -angle)
         bigAngle = angleDir(ur, ul)
-
-        #Convert to drawing space
-        ts = self.ts
-        hts = 0.5*ts
         
-        self.origin = (origin[0]*ts+hts, origin[1]*ts+hts)
-        #self.origin = (origin[0]*ts, origin[1]*ts)
+        self.origin = origin
         self.ur = ur
         self.ul = ul
         self.distance = distance
         
-        leveldimensions = [( (self.s[0])/(2**i), (self.s[1])/(2**i) ) for i in range(l+1)]
-
-        levelsizes = [leveldimensions[i][0]*leveldimensions[i][1] for i in range(l+1)]
-
-        levelradiuses = [(2**(i))/2.0 for i in range(l+1)]
+        levelsizes = [(self.size[0]*self.size[1])/(4**i) for i in range(l+1)]
+        leveldimensions = [((self.size[0])/(2**i), (self.size[1])/(2**i)) for i in range(l+1)]
+        levelradiuses = [(2**(i)) for i in range(l+1)]
         
-        print(leveldimensions)
-        
-        #starting nodes
         stack = []
         for i in xrange(leveldimensions[l][0]):
             for j in xrange(leveldimensions[l][1]):
                 if i%2==0 and j%2==0:
-                    stack.append((i, j, l))#((j*leveldimensions[l][0]+i,l))
+                    stack.append((j*leveldimensions[l][0]+i,l))
                 
         selected = []
+        ts = self.tilesize
         lts = ts*(2**l)
         t = (0,0,0)
         x = 0
         y = 0
         l = 0
-        while stack!=[]: 
-            print(stack)           
+        while stack!=[]:            
             t = stack.pop()
-            l = t[2]
-            lns = (2**l) #level node size
+            l = t[1]
+            lts = ts*(2**l)
             
-            x = t[0]#t[0]%leveldimensions[l][0]
-            y = t[1]#(t[0]-x)/leveldimensions[l][0]
+            x = t[0]%leveldimensions[l][0]
+            y = (t[0]-x)/leveldimensions[l][0]
             
             #centers
-            cx = (lns*x)+(lns/2.0)
-            cy = (lns*y)+(lns/2.0)
+            cx = (lts*x)+(lts/2.0)
+            cy = (lts*y)+(lts/2.0)
             
-            if not ( ( (x%2==1) and (y%2==1) ) or (x >= leveldimensions[l][0]) or  (y >= leveldimensions[l][1]) or (leveldimensions[l][0] == 1)):
+            if not ( ( (x%2==1) and (y%2==1) ) or (x >= leveldimensions[l][0]) or  (y >= leveldimensions[l][1])):
                 lx = x + (t[0]+1)%2 - t[0]%2
                 ly = y + t[0]%2
-                stack.append((lx, ly, l))#((ly*leveldimensions[l][0]+lx,l))
+                stack.append((ly*leveldimensions[l][0]+lx,l))
             
-            if dist2((cx, cy), origin)<1e-12:
-                if l>0:
-                    stack.append((2*x, 2*y, l-1))
-                continue
-                   
             offset, shade = shadeCalc(origin, (cx,cy), levelradiuses[l], angle, ul, ur, bigAngle)
-            # percent = percentIn(offset, shade, bigAngle) 
-                    
-            if nodeIn(offset, shade, bigAngle):#percent > 0.8:
-                print("Is in!")
+            percent = percentIn(offset, shade, bigAngle)
+
+            if percent > 0.999:
                 selected.append((x,y,l))
-            elif l>0:
-                stack.append((2*x, 2*y, l-1))#((((2*y)*leveldimensions[l-1][0])+(x*2),l-1))
+            else:
+                if l>0:
+                    stack.append((((2*y)*leveldimensions[l-1][0])+(x*2),l-1))
 
         self.selected = selected
-        print(selected)
+
         return selected
+            
