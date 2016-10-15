@@ -26,39 +26,29 @@ def vecLen(vec):
         result += i**2
     return sqrt(result)
 
-def rotVec(v, a):
-    c = cos(a)
-    s = sin(a)
-    return ( (c*v[0])-(s*v[1]), (s*v[0])+(c*v[1]) )
-
-def angleDir(u, v):
-    #angle from u to v
-    return atan2(v[1], v[0]) - atan2(u[1], u[0])
-
-def dist2(u, v):
-    return (u[0]-v[0])*(u[0]-v[0])+(u[1]-v[1])*(u[1]-v[1])
-
-def shadeCalc(o, p, r, a, ul, ur, bigAngle):
-    l = dist2(o, p)
-    theta = acos( 1-( (r*r)/(2*l) ) )
-    pl = rotVec(p, theta)
-    pr = rotVec(p, -theta)
-    print(p, pr, pl, r, theta)
-    l = sqrt(l)
-    opl = ((pl[0]-o[0])/l, (pl[1]-o[1])/l)
-    opr = ((pr[0]-o[0])/l, (pr[1]-o[1])/l)
-    offset = angleDir(ur,opr)
-    shade = angleDir(ur,opl)
-    return offset, shade
-
-def percentIn(o, s, b):
-    print (o, s, b)
-    so = s-o
-    r = 0
-    if so > 0:
-        r = r + (o  < 0 and s  > 1)*(b/so) + (o  < 0 and s <= 1)*(s/so) + (o >= 0 and s  > 1)*((b-o)/so)
-    print (r + (r<=0)*1)
-    return r + (r<=0)*1
+def shade(p, o, radius, v, ue):
+        shArr = [0,0,0,0,0,0,0,0]
+        
+        pe = (p[0] - radius*v[0], p[1] - radius*v[1])
+        pd = (p[0] + radius*v[0], p[1] + radius*v[1])
+        
+        ope = (pe[0]-o[0], pe[1]-o[1])
+        dop = vecLen(ope)
+        ope = (ope[0]/dop, ope[1]/dop)
+        
+        opd = (pd[0]-o[0], pd[1]-o[1])
+        opd = (opd[0]/dop, opd[1]/dop)
+        
+        projope = (ope[0]-ue[0], ope[1]-ue[1])
+        projope = projope[0]*v[0]+projope[1]*v[1]
+        projopd = (opd[0]-ue[0], opd[1]-ue[1])
+        projopd = projopd[0]*v[0]+projopd[1]*v[1]
+        
+        offset = projope if projope>0 else 0
+        for i in range(8):
+            shArr[i] = (offset<=(i+1)/16)*(offset+projopd>=(i+1)/8)
+        
+        return shArr
 
 class Mipmap():
     
@@ -120,16 +110,25 @@ class Mipmap():
                     vertex (lts*ax+lts, lts*ay)            
                             
     #def trace(self, p1, p2, p3, l=2):
-    def trace(self, origin, u, angle, distance, l=2):
+    def trace(self, origin, uvec, angle, distance, l=2):
         
-        v = (-u[1], u[0])
-        ul = rotVec(u, angle)
-        ur = rotVec(u, -angle)
-        bigAngle = angleDir(ur, ul)
+        vvec = (cos(PI/2)*uvec[0]-sin(angle)*uvec[1], sin(angle)*uvec[0]+cos(angle)*uvec[1])
+        
+        p1 = origin
+        p2 = (cos(angle)*uvec[0]-sin(angle)*uvec[1], sin(angle)*uvec[0]+cos(angle)*uvec[1]) 
+        dp = vecLen(p2)
+        p2 = ((p2[0]/dp)*distance, (p2[1]/dp)*distance)
+        p2 = (p2[0]+p1[0], p2[1]+p1[1])
+        
+        p3 = (cos(angle)*uvec[0]+sin(angle)*uvec[1], -sin(angle)*uvec[0]+cos(angle)*uvec[1])
+        p3 = ((p3[0]/dp)*distance, (p3[1]/dp)*distance)
+        p3 = (p3[0]+p1[0], p3[1]+p1[1])
+        
+        print(p1, p2, p3)
         
         levelsizes = [(self.size[0]*self.size[1])/(4**i) for i in range(l+1)]
         leveldimensions = [((self.size[0])/(2**i), (self.size[1])/(2**i)) for i in range(l+1)]
-        levelradiuses = [(2**(i)) for i in range(l+1)]
+        #print(leveldimensions)
         
         stack = []
         for i in xrange(leveldimensions[l][0]):
@@ -144,7 +143,11 @@ class Mipmap():
         x = 0
         y = 0
         l = 0
-        while stack!=[]:            
+        while stack!=[]:
+            #print("==========")
+            #print "stack:", stack
+            #print "selected:", selected
+            
             t = stack.pop()
             l = t[1]
             lts = ts*(2**l)
@@ -152,25 +155,42 @@ class Mipmap():
             x = t[0]%leveldimensions[l][0]
             y = (t[0]-x)/leveldimensions[l][0]
             
-            #centers
-            cx = (lts*x)+(lts/2)
-            cy = (lts*y)+(lts/2)
-            
+            #if (t[0]+1) < levelsizes[l]:
             if not ( ( (x%2==1) and (y%2==1) ) or (x >= leveldimensions[l][0]) or  (y >= leveldimensions[l][1])):
                 lx = x + (t[0]+1)%2 - t[0]%2
                 ly = y + t[0]%2
                 stack.append((ly*leveldimensions[l][0]+lx,l))
             
-            offset, shade = shadeCalc(origin, (cx,cy), levelradiuses[l], angle, ul, ur, bigAngle)
-            percent = percentIn(offset, shade, bigAngle)
-
-            if percent > 0.8:
+            #print((x,y))
+            #This order matters for ptInSq and ptInTri
+            sq1 = (lts*x,     lts*y)
+            sq2 = (lts*x+lts, lts*y+lts)
+            sq3 = (lts*x,     lts*y+lts)
+            sq4 = (lts*x+lts, lts*y)
+            #print(sq1, sq2, sq3, sq4)
+            count = 0
+            count = count + int(ptInTri(sq1,p1,p2,p3))
+            count = count + int(ptInTri(sq2,p1,p2,p3))
+            count = count + int(ptInTri(sq3,p1,p2,p3))
+            count = count + int(ptInTri(sq4,p1,p2,p3))
+            #print("Sq points in tri:", count)
+            if count == 4:
                 selected.append((x,y,l))
-            else:
+                continue
+            if count > 0:
                 if l>0:
                     stack.append((((2*y)*leveldimensions[l-1][0])+(x*2),l-1))
-
+                continue
+            if count == 0:
+                count = 0
+                count = count + int(ptInSq(p1,sq1,sq2,sq3,sq4))
+                count = count + int(ptInSq(p2,sq1,sq2,sq3,sq4))
+                count = count + int(ptInSq(p3,sq1,sq2,sq3,sq4))
+                #print("Tri points in sq:", count)
+                if count > 0:
+                    if l>0:
+                        stack.append((((2*y)*leveldimensions[l-1][0])+(x*2),l-1))
+                continue
         self.selected = selected
-
         return selected
             

@@ -43,21 +43,17 @@ def shadeCalc(o, p, r, a, ul, ur, bigAngle):
     theta = acos( 1-( (r*r)/(2*l) ) )
     pl = rotVec(p, theta)
     pr = rotVec(p, -theta)
-    print(p, pr, pl, r, theta)
     l = sqrt(l)
     opl = ((pl[0]-o[0])/l, (pl[1]-o[1])/l)
     opr = ((pr[0]-o[0])/l, (pr[1]-o[1])/l)
-    offset = angleDir(ur,opr)
-    shade = angleDir(ur,opl)
+    offset = angleDir(ur,opr)/bigAngle
+    shade = angleDir(ur,opl)/bigAngle
     return offset, shade
 
 def percentIn(o, s, b):
-    print (o, s, b)
     so = s-o
-    r = 0
-    if so > 0:
-        r = r + (o  < 0 and s  > 1)*(b/so) + (o  < 0 and s <= 1)*(s/so) + (o >= 0 and s  > 1)*((b-o)/so)
-    print (r + (r<=0)*1)
+    so = so - (so==0)*1
+    r = 0 + (o  < 0 and s  > 1)*(b/so) + (o  < 0 and s <= 1)*(s/so) + (o >= 0 and s  > 1)*((b-o)/so)
     return r + (r<=0)*1
 
 class Mipmap():
@@ -129,7 +125,7 @@ class Mipmap():
         
         levelsizes = [(self.size[0]*self.size[1])/(4**i) for i in range(l+1)]
         leveldimensions = [((self.size[0])/(2**i), (self.size[1])/(2**i)) for i in range(l+1)]
-        levelradiuses = [(2**(i)) for i in range(l+1)]
+        levelradiuses = [0.5*(2**(i)) for i in range(l+1)]
         
         stack = []
         for i in xrange(leveldimensions[l][0]):
@@ -152,19 +148,15 @@ class Mipmap():
             x = t[0]%leveldimensions[l][0]
             y = (t[0]-x)/leveldimensions[l][0]
             
-            #centers
-            cx = (lts*x)+(lts/2)
-            cy = (lts*y)+(lts/2)
-            
             if not ( ( (x%2==1) and (y%2==1) ) or (x >= leveldimensions[l][0]) or  (y >= leveldimensions[l][1])):
                 lx = x + (t[0]+1)%2 - t[0]%2
                 ly = y + t[0]%2
                 stack.append((ly*leveldimensions[l][0]+lx,l))
             
-            offset, shade = shadeCalc(origin, (cx,cy), levelradiuses[l], angle, ul, ur, bigAngle)
+            offset, shade = shadeCalc(origin, (x,y), levelradiuses[l], angle, ul, ur, bigAngle)
             percent = percentIn(offset, shade, bigAngle)
 
-            if percent > 0.8:
+            if percent > 1:
                 selected.append((x,y,l))
             else:
                 if l>0:
