@@ -128,6 +128,10 @@ class Mipmap():
     def setlight(self, x, y):
         self.light = (x, y)
         self.lightChanged = True
+
+        s = self.s
+        self.updateShadow(s[0]/2, 2*s[1]/3)
+
         return 0          
     
     def render(self):
@@ -187,13 +191,42 @@ class Mipmap():
                     vertex (lts*ax,    lts*ay)
                     vertex (lts*ax,    lts*ay+lts)
                     vertex (lts*ax+lts, lts*ay+lts)
-                    vertex (lts*ax+lts, lts*ay)      
-        
-       # with pushStyle():
-       #     stroke('#00FF00')
-       #     line(self.origin[0], self.origin[1], self.distance*self.ur[0]*ts, self.distance*self.ur[1]*ts)
-       #     line(self.origin[0], self.origin[1], self.distance*self.ul[0]*ts, self.distance*self.ul[1]*ts)
-                
+                    vertex (lts*ax+lts, lts*ay)
+
+    def displayWithBackground(self):       
+        ts = self.ts
+        base = self.base
+        lgt = self.light
+        lgtdiam = self.lightDiameter
+        frame = self.frame
+
+        for x in range(self.s[0]):
+            for y in range(self.s[1]):
+                c = color(255.0-red(base.get(x, y)), 120.0, 120.0)
+                frame.set(x, y, c)
+
+        image(frame, 0, 0)
+
+        with pushStyle():
+            noFill()
+            stroke('#FF0000')
+            with beginShape(QUADS):
+                for i in self.selected:
+                    ax = i[0]
+                    ay = i[1]
+                    al = i[2]
+                    lts = ts*(2**(al))
+                    vertex (lts*ax,    lts*ay)
+                    vertex (lts*ax,    lts*ay+lts)
+                    vertex (lts*ax+lts, lts*ay+lts)
+                    vertex (lts*ax+lts, lts*ay)
+
+         #render light
+        with pushStyle():
+            noStroke()
+            fill('#FDFDFD')
+            ellipse(lgt[0], lgt[1], lgtdiam, lgtdiam)      
+                           
     def updateShadow(self, x, y):
         lgt = self.light
         lrad = self.lightDiameter/2.0
@@ -212,6 +245,7 @@ class Mipmap():
         ul = sqrt(ul2)
         
         c = self.calcShadow(origin, u, theta, ul, self.maxLevel)
+        self.traceDist(origin, u, theta, ul, self.maxLevel)
         
         self.frame.set(x, y, color(255.0*c))
         
@@ -269,6 +303,7 @@ class Mipmap():
         x = 0
         y = 0
         l = 0
+        counter = 0
         while stack!=[]:        
             t = stack.pop()
             l = t[2]
@@ -287,7 +322,7 @@ class Mipmap():
                 stack.append((lx, ly, l))
             
             # if node is obstacle, don't bother rendering
-            if red(mm[l].get(x,y))<1e-12:
+            if (255.0-red(mm[l].get(x,y)))<1e-12:
                 continue
             obstacle = ( 255.0-red(mm[l].get(x,y)) )/255.0 #1.0 is full blocking obstacle
 
@@ -301,18 +336,113 @@ class Mipmap():
             
             nodeDist = sqrt(dist2(origin, (cx,cy)))
 
-            if nodeDist+levelradiuses[l] <= distance:
-                if nodeIn(offset, shade, bigAngle):
+            if nodeIn(offset, shade, bigAngle):
+                if nodeDist+levelradiuses[l] <= distance:
                     sv = addShade(offset, shade, bigAngle, obstacle, sv)
+                    counter = counter+1
             elif l>0:
                 stack.append((2*x, 2*y, l-1))
 
         s = min(vecLen(sv), 1.0)
         s = 1.0 - s
-        print(s)
+        print(s, counter)
         return s
                                                                               
-    #def trace(self, p1, p2, p3, l=2):
+    def traceDist(self, origin, u, angle, distance, l=2):
+        
+        mm = self.maps
+        s = 0.0
+        sv = (0.0,0.0,0.0,0.0)
+
+        if (len(u) != 2) or (len(origin) != 2):
+            return
+        
+        #convert all to float
+        distance = distance*1.0
+        angle = angle*1.0
+        origin = (origin[0]*1.0, origin[1]*1.0)
+        
+        #Normalize u
+        u = (1.0*u[0], 1.0*u[1])
+        ulen = vecLen(u)
+        u = (u[0]/ulen, u[1]/ulen)
+        
+        v = (-u[1], u[0])
+        ul = rotVec(u, angle)
+        ur = rotVec(u, -angle)
+        bigAngle = angleDir(ur, ul)
+
+        #Convert to drawing space
+        ts = self.ts
+        hts = 0.5*ts
+        
+        self.origin = (origin[0]*ts+hts, origin[1]*ts+hts)
+        #self.origin = (origin[0]*ts, origin[1]*ts)
+        self.ur = ur
+        self.ul = ul
+        self.distance = distance
+        
+        leveldimensions = [( (self.s[0])/(2**i), (self.s[1])/(2**i) ) for i in range(l+1)]
+
+        levelsizes = [leveldimensions[i][0]*leveldimensions[i][1] for i in range(l+1)]
+
+        levelradiuses = [(2**(i))/2.0 for i in range(l+1)]
+        
+        #starting nodes
+        stack = []
+        for i in xrange(leveldimensions[l][0]):
+            for j in xrange(leveldimensions[l][1]):
+                if i%2==0 and j%2==0:
+                    stack.append((i, j, l))#((j*leveldimensions[l][0]+i,l))
+        
+        selected = []  
+        lts = ts*(2**l)
+        t = (0,0,0)
+        x = 0
+        y = 0
+        l = 0        
+        while stack!=[]:        
+            t = stack.pop()
+            l = t[2]
+            lns = (2**l) #level node size
+            
+            x = t[0]
+            y = t[1]
+            
+            #centers
+            cx = (lns*x)+(lns/2.0)
+            cy = (lns*y)+(lns/2.0)
+            
+            if not ( ( (x%2==1) and (y%2==1) ) or (x >= leveldimensions[l][0]) or  (y >= leveldimensions[l][1]) or (leveldimensions[l][0] == 1)):
+                lx = x + (t[0]+1)%2 - t[0]%2
+                ly = y + t[0]%2
+                stack.append((lx, ly, l))
+            
+            # if node is obstacle, don't bother rendering
+            if (255.0-red(mm[l].get(x,y)))<1e-12:
+                continue
+            obstacle = ( 255.0-red(mm[l].get(x,y)) )/255.0 #1.0 is full blocking obstacle
+
+            # if cone origin is inside node, break it
+            if dist2((cx, cy), origin)<1e-12:
+                if l>0:
+                    stack.append((2*x, 2*y, l-1))
+                continue
+                   
+            offset, shade = shadeCalc(origin, (cx,cy), levelradiuses[l], angle, ul, ur, bigAngle)
+            
+            nodeDist = sqrt(dist2(origin, (cx,cy)))
+            
+            if nodeIn(offset, shade, bigAngle):
+                if nodeDist+levelradiuses[l] <= distance:
+                    selected.append((x,y,l))
+            elif l>0:
+                stack.append((2*x, 2*y, l-1))
+
+        self.selected = selected
+        print(len(selected))
+        return s
+
     def trace(self, origin, u, angle, distance, l=2):
         
         if (len(u) != 2) or (len(origin) != 2):

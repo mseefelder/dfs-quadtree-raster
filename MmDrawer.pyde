@@ -38,8 +38,8 @@ def draw():
     if tex[0]:
         #angle = angle+0.1
         #tex[0].trace(origin, uvec, angle, distance, 4)
-        #tex[0].display()
-        tex[0].render()
+        tex[0].displayWithBackground()
+        #tex[0].render()
     #with pushStyle():
     #    noFill()
     #    stroke('#00FF00')
