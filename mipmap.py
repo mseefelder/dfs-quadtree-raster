@@ -85,8 +85,14 @@ def addShade(o, s, b, c, v):
     x = 0.0
     step = (1.0/res)
     for i in xrange(res):
-        x = (i+1)*step
-        tempvec[i] = ((abs(max(o-x, -x))+min(s-x, 0))/step) * c + v[i]
+        l = (i)*step
+        r = (i+1)*step
+        #percentage = (abs(max(o-x, -x))+min(s-x, 0))/step
+        #percentage = ( min(step, step-min(o-x, step) ) - abs(min(s-x, 0.0)))/step
+        percentage = ( step - min(max(o-l, 0),step) + max(min(s-r, 0),-step) )/step
+        #if percentage>1.0:
+        #    print "SOMETHING'S WRONG", b, s, o, x, percentage
+        tempvec[i] = min(percentage * c + v[i], 1.0)
     return tuple(tempvec)
 
 class Mipmap():
@@ -96,9 +102,9 @@ class Mipmap():
         self.s = (w/tilesize, h/tilesize)
         self.selected = []
         self.base = levels[0]
-        self.light = (0.0,0.0)#(self.s[0]/2, self.s[1]/2)
+        self.light = (self.s[0]/2, self.s[1]/2)#(0.0,0.0)#
         self.lightDiameter = self.s[0]/8
-        self.lightChanged = True
+        self.lightChanged = False #True
         self.frame = createImage(self.s[0], self.s[1], RGB)
         self.maps = levels
         self.maxLevel = len(self.maps)-1
@@ -129,8 +135,8 @@ class Mipmap():
         self.light = (x, y)
         self.lightChanged = True
 
-        s = self.s
-        self.updateShadow(s[0]/2, 2*s[1]/3)
+        #s = self.s
+        #self.updateShadow(s[0]/2, 2*s[1]/3)
 
         return 0          
     
@@ -245,7 +251,7 @@ class Mipmap():
         ul = sqrt(ul2)
         
         c = self.calcShadow(origin, u, theta, ul, self.maxLevel)
-        self.traceDist(origin, u, theta, ul, self.maxLevel)
+        #self.traceDist(origin, u, theta, ul, self.maxLevel)
         
         self.frame.set(x, y, color(255.0*c))
         
@@ -325,6 +331,8 @@ class Mipmap():
             if (255.0-red(mm[l].get(x,y)))<1e-12:
                 continue
             obstacle = ( 255.0-red(mm[l].get(x,y)) )/255.0 #1.0 is full blocking obstacle
+            if obstacle>1.0:
+                print "SOMETHING'S WRONG"
 
             # if cone origin is inside node, break it
             if dist2((cx, cy), origin)<1e-12:
@@ -343,9 +351,11 @@ class Mipmap():
             elif l>0:
                 stack.append((2*x, 2*y, l-1))
 
-        s = min(vecLen(sv), 1.0)
+        print(vecLen(sv))
+        #s = min(vecLen(sv), 1.0)
+        s = min((sv[0]+sv[1]+sv[2]+sv[3])/4.0, 1.0)
         s = 1.0 - s
-        print(s, counter)
+        print(s, sv, counter)
         return s
                                                                               
     def traceDist(self, origin, u, angle, distance, l=2):
